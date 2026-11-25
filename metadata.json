@@ -1,0 +1,6 @@
+{
+  "name": "Cavalcante & Rolim | Signature Spaces — Portal RH & Endomarketing",
+  "description": "Portal oficial de RH, Endomarketing, Academia Gamificada, Documentação Editorial e Auditoria da Cavalcante & Rolim Empreendimentos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

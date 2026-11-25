@@ -1,0 +1,494 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Pillar 4.1: Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // GLOBAL HARDENED PRIMITIVES
+    // =========================================================================
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'willian.vianna@cavalcanterolim.com.br';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (isVerifiedUser() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    function isValidString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isValidStringArray(arr, maxItems) {
+      return arr is list && arr.size() <= maxItems && (arr.size() == 0 || arr[0] is string);
+    }
+
+    // =========================================================================
+    // ENTITY VALIDATION BLUEPRINTS
+    // =========================================================================
+    function isValidAdminRecord(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'grantedBy', 'createdAt']) &&
+             data.keys().hasOnly(['uid', 'email', 'grantedBy', 'createdAt']) &&
+             data.uid == userId &&
+             isValidId(data.uid) &&
+             isValidString(data.email, 3, 200) &&
+             isValidString(data.grantedBy, 1, 128) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidCollaboratorPublic(data, userId) {
+      return data.keys().hasAll([
+               'uid', 'displayName', 'photoURL', 'department', 'roleTitle',
+               'points', 'badges', 'completedModulesCount', 'readAnnouncementsCount',
+               'readDocumentsCount', 'levelTitle', 'isActive', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'uid', 'displayName', 'photoURL', 'department', 'roleTitle',
+               'points', 'badges', 'completedModulesCount', 'readAnnouncementsCount',
+               'readDocumentsCount', 'levelTitle', 'isActive', 'createdAt', 'updatedAt'
+             ]) &&
+             data.uid == userId &&
+             isValidId(data.uid) &&
+             isValidString(data.displayName, 1, 120) &&
+             isValidString(data.photoURL, 0, 250000) &&
+             isValidString(data.department, 1, 80) &&
+             isValidString(data.roleTitle, 1, 80) &&
+             data.points is int && data.points >= 0 && data.points <= 1000000 &&
+             isValidStringArray(data.badges, 25) &&
+             data.completedModulesCount is int && data.completedModulesCount >= 0 &&
+             data.readAnnouncementsCount is int && data.readAnnouncementsCount >= 0 &&
+             data.readDocumentsCount is int && data.readDocumentsCount >= 0 &&
+             isValidString(data.levelTitle, 1, 60) &&
+             data.isActive is bool &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidUserPrivate(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'pushEnabled', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['uid', 'email', 'phone', 'fcmToken', 'pushEnabled', 'encryptedPayload', 'createdAt', 'updatedAt']) &&
+             data.uid == userId &&
+             isValidId(data.uid) &&
+             isValidString(data.email, 3, 200) &&
+             (!('phone' in data) || isValidString(data.phone, 0, 40)) &&
+             (!('fcmToken' in data) || isValidString(data.fcmToken, 0, 512)) &&
+             data.pushEnabled is bool &&
+             (!('encryptedPayload' in data) || isValidString(data.encryptedPayload, 0, 20000)) &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidAnnouncement(data) {
+      return data.keys().hasAll([
+               'title', 'category', 'summary', 'content', 'imageUrl',
+               'authorName', 'authorUid', 'pointsReward', 'featured', 'status', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'title', 'category', 'summary', 'content', 'imageUrl',
+               'authorName', 'authorUid', 'pointsReward', 'featured', 'status', 'createdAt', 'updatedAt'
+             ]) &&
+             isValidString(data.title, 2, 160) &&
+             data.category in ['Comunicado Oficial', 'Obras & Projetos', 'Cultura & Pessoas', 'Segurança & ESG'] &&
+             isValidString(data.summary, 4, 400) &&
+             isValidString(data.content, 4, 20000) &&
+             isValidString(data.imageUrl, 1, 300000) &&
+             isValidString(data.authorName, 1, 120) &&
+             isValidId(data.authorUid) &&
+             data.pointsReward is int && data.pointsReward >= 0 && data.pointsReward <= 1000 &&
+             data.featured is bool &&
+             data.status in ['published', 'draft'] &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidTraining(data) {
+      return data.keys().hasAll([
+               'title', 'track', 'durationMinutes', 'pointsReward', 'coverUrl',
+               'summary', 'lessons', 'quizQuestion', 'quizOptions', 'correctOptionIndex',
+               'badgeAwarded', 'status', 'authorUid', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'title', 'track', 'durationMinutes', 'pointsReward', 'coverUrl',
+               'summary', 'lessons', 'quizQuestion', 'quizOptions', 'correctOptionIndex',
+               'badgeAwarded', 'status', 'authorUid', 'createdAt', 'updatedAt'
+             ]) &&
+             isValidString(data.title, 2, 160) &&
+             isValidString(data.track, 2, 80) &&
+             data.durationMinutes is int && data.durationMinutes >= 1 && data.durationMinutes <= 600 &&
+             data.pointsReward is int && data.pointsReward >= 0 && data.pointsReward <= 2000 &&
+             isValidString(data.coverUrl, 1, 300000) &&
+             isValidString(data.summary, 4, 500) &&
+             isValidStringArray(data.lessons, 20) &&
+             isValidString(data.quizQuestion, 4, 300) &&
+             isValidStringArray(data.quizOptions, 6) &&
+             data.quizOptions.size() >= 2 &&
+             data.correctOptionIndex is int && data.correctOptionIndex >= 0 && data.correctOptionIndex < data.quizOptions.size() &&
+             isValidString(data.badgeAwarded, 2, 80) &&
+             data.status in ['published', 'draft'] &&
+             isValidId(data.authorUid) &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidCorporateDocument(data) {
+      return data.keys().hasAll([
+               'title', 'docCode', 'sourceFormat', 'category', 'authorName',
+               'authorUid', 'isEncrypted', 'pointsReward', 'status', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'title', 'docCode', 'sourceFormat', 'category', 'authorName',
+               'authorUid', 'isEncrypted', 'extractedContent', 'encryptedEnvelope',
+               'imageDataUrl', 'pointsReward', 'status', 'createdAt', 'updatedAt'
+             ]) &&
+             isValidString(data.title, 2, 180) &&
+             isValidString(data.docCode, 2, 40) &&
+             data.sourceFormat in ['pdf', 'docx', 'xlsx', 'pptx', 'txt', 'image'] &&
+             isValidString(data.category, 2, 80) &&
+             isValidString(data.authorName, 1, 120) &&
+             isValidId(data.authorUid) &&
+             data.isEncrypted is bool &&
+             (!('extractedContent' in data) || isValidString(data.extractedContent, 0, 150000)) &&
+             (!('encryptedEnvelope' in data) || isValidString(data.encryptedEnvelope, 0, 180000)) &&
+             (!('imageDataUrl' in data) || isValidString(data.imageDataUrl, 0, 300000)) &&
+             data.pointsReward is int && data.pointsReward >= 0 && data.pointsReward <= 1000 &&
+             data.status in ['published', 'draft'] &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidBirthday(data) {
+      return data.keys().hasAll(['name', 'roleTitle', 'department', 'day', 'month', 'avatarUrl', 'active', 'authorUid', 'createdAt']) &&
+             data.keys().hasOnly(['name', 'roleTitle', 'department', 'branch', 'day', 'month', 'avatarUrl', 'active', 'authorUid', 'createdAt']) &&
+             isValidString(data.name, 2, 120) &&
+             isValidString(data.roleTitle, 2, 80) &&
+             isValidString(data.department, 2, 80) &&
+             (!('branch' in data) || isValidString(data.branch, 0, 120)) &&
+             data.day is int && data.day >= 1 && data.day <= 31 &&
+             data.month is int && data.month >= 1 && data.month <= 12 &&
+             isValidString(data.avatarUrl, 0, 250000) &&
+             data.active is bool &&
+             isValidId(data.authorUid) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidBadgeDefinition(data) {
+      return data.keys().hasAll(['title', 'description', 'criteria', 'iconKey', 'accentHex', 'active', 'authorUid', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['title', 'description', 'criteria', 'iconKey', 'accentHex', 'active', 'authorUid', 'createdAt', 'updatedAt']) &&
+             isValidString(data.title, 2, 80) &&
+             isValidString(data.description, 2, 240) &&
+             isValidString(data.criteria, 2, 200) &&
+             data.iconKey in ['medal', 'crown', 'shield', 'award', 'star', 'hardhat'] &&
+             isValidString(data.accentHex, 4, 20) &&
+             data.active is bool &&
+             isValidId(data.authorUid) &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidActivity(data) {
+      return data.keys().hasAll(['userId', 'userName', 'targetType', 'targetId', 'targetTitle', 'pointsEarned', 'createdAt']) &&
+             data.keys().hasOnly(['userId', 'userName', 'targetType', 'targetId', 'targetTitle', 'pointsEarned', 'createdAt']) &&
+             isValidId(data.userId) &&
+             isValidString(data.userName, 1, 120) &&
+             data.targetType in ['announcement', 'training', 'document', 'checkin'] &&
+             isValidId(data.targetId) &&
+             isValidString(data.targetTitle, 1, 180) &&
+             data.pointsEarned is int && data.pointsEarned >= 0 && data.pointsEarned <= 2000 &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['actorUid', 'actorName', 'action', 'resource', 'severity', 'integrityHash', 'details', 'createdAt']) &&
+             data.keys().hasOnly(['actorUid', 'actorName', 'action', 'resource', 'severity', 'integrityHash', 'details', 'createdAt']) &&
+             isValidId(data.actorUid) &&
+             isValidString(data.actorName, 1, 120) &&
+             isValidString(data.action, 2, 120) &&
+             isValidString(data.resource, 1, 160) &&
+             data.severity in ['info', 'warning', 'critical'] &&
+             isValidString(data.integrityHash, 8, 128) &&
+             isValidString(data.details, 1, 500) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidCriticalAlert(data) {
+      return data.keys().hasAll(['title', 'message', 'severity', 'triggeredByUid', 'resolved', 'dispatchedChannels', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['title', 'message', 'severity', 'triggeredByUid', 'resolved', 'dispatchedChannels', 'createdAt', 'updatedAt']) &&
+             isValidString(data.title, 2, 160) &&
+             isValidString(data.message, 2, 600) &&
+             data.severity in ['warning', 'critical'] &&
+             isValidId(data.triggeredByUid) &&
+             data.resolved is bool &&
+             isValidStringArray(data.dispatchedChannels, 5) &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidPortalBrandSettings(data) {
+      return data.keys().hasAll(['heroHeadline', 'heroSubheadline', 'updatedByUid', 'updatedAt']) &&
+             data.keys().hasOnly(['logoDataUrl', 'heroImageUrl', 'heroHeadline', 'heroSubheadline', 'updatedByUid', 'updatedAt']) &&
+             (!('logoDataUrl' in data) || isValidString(data.logoDataUrl, 0, 250000)) &&
+             (!('heroImageUrl' in data) || isValidString(data.heroImageUrl, 0, 300000)) &&
+             isValidString(data.heroHeadline, 2, 140) &&
+             isValidString(data.heroSubheadline, 2, 280) &&
+             isValidId(data.updatedByUid) &&
+             data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // COLLECTION MATCH BLOCKS
+    // =========================================================================
+
+    // Connectivity health check endpoint
+    match /test/{docId} {
+      allow get: if isValidId(docId) && docId == 'connection';
+    }
+
+    // Admins directory
+    match /admins/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isBootstrappedAdmin();
+      allow create: if isValidId(userId) && isAdmin() && isValidAdminRecord(incoming(), userId) && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isValidId(userId) && isBootstrappedAdmin() && userId != request.auth.uid;
+    }
+
+    // Public-safe Collaborator Profile & Gamification Leaderboard (zero PII)
+    match /collaborators/{userId} {
+      allow get: if isValidId(userId) && isVerifiedUser();
+      allow list: if isVerifiedUser() && resource.data.isActive == true;
+      allow create: if isValidId(userId) &&
+        isOwner(userId) &&
+        isValidCollaboratorPublic(incoming(), userId) &&
+        incoming().points == 0 &&
+        incoming().badges.size() == 0 &&
+        incoming().completedModulesCount == 0 &&
+        incoming().readAnnouncementsCount == 0 &&
+        incoming().readDocumentsCount == 0 &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(userId) && isValidCollaboratorPublic(incoming(), userId) && (
+        isAdmin() ||
+        (
+          isOwner(userId) &&
+          incoming().uid == existing().uid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          (
+            // Action: Profile update
+            incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'department', 'roleTitle', 'updatedAt']) ||
+            // Action: Earned gamification progress (strictly bounded increment)
+            (
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'points', 'badges', 'completedModulesCount', 'readAnnouncementsCount',
+                'readDocumentsCount', 'levelTitle', 'updatedAt'
+              ]) &&
+              incoming().points >= existing().points &&
+              incoming().points <= existing().points + 2000
+            )
+          )
+        )
+      );
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    // Isolated PII, FCM tokens & E2EE personal vault
+    match /users_private/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isBootstrappedAdmin();
+      allow create: if isValidId(userId) &&
+        isOwner(userId) &&
+        isValidUserPrivate(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(userId) && isValidUserPrivate(incoming(), userId) && (
+        isOwner(userId) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['phone', 'fcmToken', 'pushEnabled', 'encryptedPayload', 'updatedAt'])
+      );
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    // Corporate Announcements
+    match /announcements/{announcementId} {
+      allow get: if isValidId(announcementId) && isVerifiedUser() && (resource.data.status == 'published' || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.status == 'published' || isBootstrappedAdmin());
+      allow create: if isValidId(announcementId) &&
+        isAdmin() &&
+        isValidAnnouncement(incoming()) &&
+        incoming().authorUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(announcementId) &&
+        isAdmin() &&
+        isValidAnnouncement(incoming()) &&
+        incoming().authorUid == existing().authorUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time;
+      allow delete: if isValidId(announcementId) && isAdmin();
+    }
+
+    // C&R Academy Trainings
+    match /trainings/{trainingId} {
+      allow get: if isValidId(trainingId) && isVerifiedUser() && (resource.data.status == 'published' || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.status == 'published' || isBootstrappedAdmin());
+      allow create: if isValidId(trainingId) &&
+        isAdmin() &&
+        isValidTraining(incoming()) &&
+        incoming().authorUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(trainingId) &&
+        isAdmin() &&
+        isValidTraining(incoming()) &&
+        incoming().authorUid == existing().authorUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time;
+      allow delete: if isValidId(trainingId) && isAdmin();
+    }
+
+    // Universal Corporate Documents
+    match /documents/{documentId} {
+      allow get: if isValidId(documentId) && isVerifiedUser() && (resource.data.status == 'published' || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.status == 'published' || isBootstrappedAdmin());
+      allow create: if isValidId(documentId) &&
+        isAdmin() &&
+        isValidCorporateDocument(incoming()) &&
+        incoming().authorUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(documentId) &&
+        isAdmin() &&
+        isValidCorporateDocument(incoming()) &&
+        incoming().authorUid == existing().authorUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time;
+      allow delete: if isValidId(documentId) && isAdmin();
+    }
+
+    // Monthly Birthdays
+    match /birthdays/{birthdayId} {
+      allow get: if isValidId(birthdayId) && isVerifiedUser() && (resource.data.active == true || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.active == true || isBootstrappedAdmin());
+      allow create: if isValidId(birthdayId) &&
+        isAdmin() &&
+        isValidBirthday(incoming()) &&
+        incoming().authorUid == request.auth.uid &&
+        incoming().createdAt == request.time;
+      allow update: if isValidId(birthdayId) &&
+        isAdmin() &&
+        isValidBirthday(incoming()) &&
+        incoming().authorUid == existing().authorUid &&
+        incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(birthdayId) && isAdmin();
+    }
+
+    // Gamification Activities (Anti-Duplicate Point Farming)
+    match /activities/{activityId} {
+      allow get: if isValidId(activityId) && isVerifiedUser() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.userId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isValidId(activityId) &&
+        isVerifiedUser() &&
+        isValidActivity(incoming()) &&
+        incoming().userId == request.auth.uid &&
+        incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Real-Time Immutable Security Audit Logs
+    match /audit_logs/{logId} {
+      allow get: if isValidId(logId) && isAdmin();
+      allow list: if isBootstrappedAdmin();
+      allow create: if isValidId(logId) &&
+        isVerifiedUser() &&
+        isValidAuditLog(incoming()) &&
+        incoming().actorUid == request.auth.uid &&
+        incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Critical Admin Alerts
+    match /alerts/{alertId} {
+      allow get: if isValidId(alertId) && isAdmin();
+      allow list: if isBootstrappedAdmin();
+      allow create: if isValidId(alertId) &&
+        isVerifiedUser() &&
+        isValidCriticalAlert(incoming()) &&
+        incoming().triggeredByUid == request.auth.uid &&
+        incoming().resolved == false &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(alertId) &&
+        isAdmin() &&
+        isValidCriticalAlert(incoming()) &&
+        existing().resolved == false &&
+        incoming().triggeredByUid == existing().triggeredByUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['resolved', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // Portal Brand & Hero Settings
+    match /portal_settings/{settingId} {
+      allow get: if isValidId(settingId) && isVerifiedUser();
+      allow create, update: if isValidId(settingId) &&
+        settingId == 'brand' &&
+        isAdmin() &&
+        isValidPortalBrandSettings(incoming()) &&
+        incoming().updatedByUid == request.auth.uid &&
+        incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // Customizable Golden Badges
+    match /badge_definitions/{badgeId} {
+      allow get: if isValidId(badgeId) && isVerifiedUser() && (resource.data.active == true || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.active == true || isBootstrappedAdmin());
+      allow create: if isValidId(badgeId) &&
+        isAdmin() &&
+        isValidBadgeDefinition(incoming()) &&
+        incoming().authorUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(badgeId) &&
+        isAdmin() &&
+        isValidBadgeDefinition(incoming()) &&
+        incoming().authorUid == existing().authorUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time;
+      allow delete: if isValidId(badgeId) && isAdmin();
+    }
+  }
+}

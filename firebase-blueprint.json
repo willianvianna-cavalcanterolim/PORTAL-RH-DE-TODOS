@@ -1,0 +1,320 @@
+{
+  "entities": {
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Authorized portal administrator entry.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "grantedBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "grantedBy", "createdAt"]
+    },
+    "CollaboratorPublic": {
+      "title": "CollaboratorPublic",
+      "description": "Public-safe collaborator profile and gamification state (zero PII).",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "photoURL": { "type": "string", "maxLength": 250000 },
+        "department": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "roleTitle": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "points": { "type": "integer" },
+        "badges": { "type": "array" },
+        "completedModulesCount": { "type": "integer" },
+        "readAnnouncementsCount": { "type": "integer" },
+        "readDocumentsCount": { "type": "integer" },
+        "levelTitle": { "type": "string", "maxLength": 60 },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "department",
+        "roleTitle",
+        "points",
+        "badges",
+        "completedModulesCount",
+        "readAnnouncementsCount",
+        "readDocumentsCount",
+        "levelTitle",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserPrivate": {
+      "title": "UserPrivate",
+      "description": "Isolated PII, FCM push token, and end-to-end encrypted collaborator notes.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "phone": { "type": "string", "maxLength": 40 },
+        "fcmToken": { "type": "string", "maxLength": 512 },
+        "pushEnabled": { "type": "boolean" },
+        "encryptedPayload": { "type": "string", "maxLength": 20000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "pushEnabled", "createdAt", "updatedAt"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Corporate announcement with standardized 16:9 media and gamification reward.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "category": { "type": "string", "enum": ["Comunicado Oficial", "Obras & Projetos", "Cultura & Pessoas", "Segurança & ESG"] },
+        "summary": { "type": "string", "minLength": 4, "maxLength": 400 },
+        "content": { "type": "string", "minLength": 4, "maxLength": 20000 },
+        "imageUrl": { "type": "string", "maxLength": 300000 },
+        "authorName": { "type": "string", "maxLength": 120 },
+        "authorUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "pointsReward": { "type": "integer" },
+        "featured": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["published", "draft"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "title",
+        "category",
+        "summary",
+        "content",
+        "imageUrl",
+        "authorName",
+        "authorUid",
+        "pointsReward",
+        "featured",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "TrainingModule": {
+      "title": "TrainingModule",
+      "description": "C&R Academy gamified training module.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "track": { "type": "string", "maxLength": 80 },
+        "durationMinutes": { "type": "integer" },
+        "pointsReward": { "type": "integer" },
+        "coverUrl": { "type": "string", "maxLength": 300000 },
+        "summary": { "type": "string", "maxLength": 500 },
+        "lessons": { "type": "array" },
+        "quizQuestion": { "type": "string", "maxLength": 300 },
+        "quizOptions": { "type": "array" },
+        "correctOptionIndex": { "type": "integer" },
+        "badgeAwarded": { "type": "string", "maxLength": 80 },
+        "status": { "type": "string", "enum": ["published", "draft"] },
+        "authorUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "title",
+        "track",
+        "durationMinutes",
+        "pointsReward",
+        "coverUrl",
+        "summary",
+        "lessons",
+        "quizQuestion",
+        "quizOptions",
+        "correctOptionIndex",
+        "badgeAwarded",
+        "status",
+        "authorUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CorporateDocument": {
+      "title": "CorporateDocument",
+      "description": "Universal imported corporate document rendered in C&R Editorial Template with optional E2EE.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 2, "maxLength": 180 },
+        "docCode": { "type": "string", "maxLength": 40 },
+        "sourceFormat": { "type": "string", "enum": ["pdf", "docx", "xlsx", "pptx", "txt", "image"] },
+        "category": { "type": "string", "maxLength": 80 },
+        "authorName": { "type": "string", "maxLength": 120 },
+        "authorUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "isEncrypted": { "type": "boolean" },
+        "extractedContent": { "type": "string", "maxLength": 150000 },
+        "encryptedEnvelope": { "type": "string", "maxLength": 180000 },
+        "imageDataUrl": { "type": "string", "maxLength": 300000 },
+        "pointsReward": { "type": "integer" },
+        "status": { "type": "string", "enum": ["published", "draft"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "title",
+        "docCode",
+        "sourceFormat",
+        "category",
+        "authorName",
+        "authorUid",
+        "isEncrypted",
+        "pointsReward",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BirthdayEntry": {
+      "title": "BirthdayEntry",
+      "description": "Monthly birthday honoree with 1:1 standardized avatar and unit branch.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "roleTitle": { "type": "string", "maxLength": 80 },
+        "department": { "type": "string", "maxLength": 80 },
+        "branch": { "type": "string", "maxLength": 120 },
+        "day": { "type": "integer" },
+        "month": { "type": "integer" },
+        "avatarUrl": { "type": "string", "maxLength": 250000 },
+        "active": { "type": "boolean" },
+        "authorUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "roleTitle", "department", "day", "month", "avatarUrl", "active", "authorUid", "createdAt"]
+    },
+    "BadgeDefinition": {
+      "title": "BadgeDefinition",
+      "description": "Customizable golden gamification badge managed by Admin.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "description": { "type": "string", "minLength": 2, "maxLength": 240 },
+        "criteria": { "type": "string", "minLength": 2, "maxLength": 200 },
+        "iconKey": { "type": "string", "enum": ["medal", "crown", "shield", "award", "star", "hardhat"] },
+        "accentHex": { "type": "string", "maxLength": 20 },
+        "active": { "type": "boolean" },
+        "authorUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "description", "criteria", "iconKey", "accentHex", "active", "authorUid", "createdAt", "updatedAt"]
+    },
+    "ActivityCompletion": {
+      "title": "ActivityCompletion",
+      "description": "Records collaborator completions of announcements, trainings, and documents.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userName": { "type": "string", "maxLength": 120 },
+        "targetType": { "type": "string", "enum": ["announcement", "training", "document", "checkin"] },
+        "targetId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "targetTitle": { "type": "string", "maxLength": 180 },
+        "pointsEarned": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userName", "targetType", "targetId", "targetTitle", "pointsEarned", "createdAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable real-time security audit log entry with cryptographic integrity hash.",
+      "type": "object",
+      "properties": {
+        "actorUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "actorName": { "type": "string", "maxLength": 120 },
+        "action": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "resource": { "type": "string", "maxLength": 160 },
+        "severity": { "type": "string", "enum": ["info", "warning", "critical"] },
+        "integrityHash": { "type": "string", "maxLength": 128 },
+        "details": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["actorUid", "actorName", "action", "resource", "severity", "integrityHash", "details", "createdAt"]
+    },
+    "CriticalAlert": {
+      "title": "CriticalAlert",
+      "description": "Critical admin security or operational alert dispatched via push/email.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "message": { "type": "string", "minLength": 2, "maxLength": 600 },
+        "severity": { "type": "string", "enum": ["warning", "critical"] },
+        "triggeredByUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "resolved": { "type": "boolean" },
+        "dispatchedChannels": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "message", "severity", "triggeredByUid", "resolved", "dispatchedChannels", "createdAt", "updatedAt"]
+    },
+    "PortalBrandSettings": {
+      "title": "PortalBrandSettings",
+      "description": "Customizable brand logo, hero banner, and welcome copy managed by Admin.",
+      "type": "object",
+      "properties": {
+        "logoDataUrl": { "type": "string", "maxLength": 250000 },
+        "heroImageUrl": { "type": "string", "maxLength": 300000 },
+        "heroHeadline": { "type": "string", "maxLength": 140 },
+        "heroSubheadline": { "type": "string", "maxLength": 280 },
+        "updatedByUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["heroHeadline", "heroSubheadline", "updatedByUid", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Admin role directory"
+    },
+    "/collaborators/{userId}": {
+      "schema": { "$ref": "#/entities/CollaboratorPublic" },
+      "description": "Public-safe collaborator leaderboard and gamification profile"
+    },
+    "/users_private/{userId}": {
+      "schema": { "$ref": "#/entities/UserPrivate" },
+      "description": "Isolated PII and E2EE personal vault"
+    },
+    "/announcements/{announcementId}": {
+      "schema": { "$ref": "#/entities/Announcement" },
+      "description": "Corporate announcements and endomarketing"
+    },
+    "/trainings/{trainingId}": {
+      "schema": { "$ref": "#/entities/TrainingModule" },
+      "description": "C&R Academy training modules"
+    },
+    "/documents/{documentId}": {
+      "schema": { "$ref": "#/entities/CorporateDocument" },
+      "description": "Universal imported documents rendered in Editorial Template"
+    },
+    "/birthdays/{birthdayId}": {
+      "schema": { "$ref": "#/entities/BirthdayEntry" },
+      "description": "Monthly birthday honorees"
+    },
+    "/activities/{activityId}": {
+      "schema": { "$ref": "#/entities/ActivityCompletion" },
+      "description": "Gamification completion records"
+    },
+    "/audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Real-time immutable security audit logs"
+    },
+    "/alerts/{alertId}": {
+      "schema": { "$ref": "#/entities/CriticalAlert" },
+      "description": "Critical admin alerts"
+    },
+    "/portal_settings/{settingId}": {
+      "schema": { "$ref": "#/entities/PortalBrandSettings" },
+      "description": "Portal branding and hero banner configuration"
+    },
+    "/badge_definitions/{badgeId}": {
+      "schema": { "$ref": "#/entities/BadgeDefinition" },
+      "description": "Customizable golden gamification badges"
+    }
+  }
+}
